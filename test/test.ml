@@ -2,6 +2,7 @@
 (*  xdg-basedir: XDG basedir location for data/cache/configuration files        *)
 (*                                                                              *)
 (*  Copyright (C) 2011, OCamlCore SARL                                          *)
+(*  Copyright (C) 2021, O(1) Labs LLC                                           *)
 (*                                                                              *)
 (*  This library is free software; you can redistribute it and/or modify it     *)
 (*  under the terms of the GNU Lesser General Public License as published by    *)
@@ -41,14 +42,15 @@ let bracket_xdg_env f =
     (fun (home, sys1, sys2) ->
        let mk_fn = make_filename in
        let xdg_env =
-         {
-           data_home = mk_fn [home; ".local"; "share"];
-           data_dirs = [mk_fn [sys1; "share"];
-                        mk_fn [sys2; "share"]];
+         { cache_home = mk_fn [home; ".cache"];
            config_home = mk_fn [home; ".config"];
-           config_dirs = [mk_fn [sys1; "etc"];
-                          mk_fn [sys2; "etc"]];
-           cache_home = mk_fn [home; ".cache"];
+           config_dirs = [ mk_fn [sys1; "etc"];
+                           mk_fn [sys2; "etc"]];
+           data_dirs = [ mk_fn [sys1; "share"];
+                         mk_fn [sys2; "share"] ];
+           data_home = mk_fn [home; ".local"; "share"];
+           runtime_dir = None;
+           state_home = mk_fn [home; ".local"; "state"];
          }
        in
          f xdg_env)
@@ -88,23 +90,30 @@ let test_of_vector (nm, user_file, all_files) =
 let tests = 
   "XDGBaseDir">:::
   (List.map test_of_vector 
-     [
-       "data_home", 
-       Data.user_file, 
-       Data.all_files;
+    [ "cache_home", 
+      Cache.user_file, 
+      (fun ?xdg_env ?exists fn -> 
+        try 
+          [Cache.user_file ?xdg_env ?exists fn]
+        with Not_found ->
+          []);
 
-       "config_home", 
-       Config.user_file, 
-       Config.all_files;
+      "config_home", 
+      Config.user_file, 
+      Config.all_files;
 
-       "cache_home", 
-       Cache.user_file, 
-       (fun ?xdg_env ?exists fn -> 
-          try 
-            [Cache.user_file ?xdg_env ?exists fn]
-          with Not_found ->
-            []);
-     ])
+      "data_home", 
+      Data.user_file, 
+      Data.all_files;
+
+      "state_home", 
+      State.user_file, 
+      (fun ?xdg_env ?exists fn -> 
+        try 
+          [State.user_file ?xdg_env ?exists fn]
+        with Not_found ->
+          []);
+      ])
 
 let _ =
   run_test_tt_main tests

@@ -4,5 +4,6 @@
 Authors of ocaml-xdg-basedir:
 
 * Sylvain Le Gall
+* Ash Manning
 
 (* OASIS_STOP *)

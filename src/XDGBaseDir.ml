@@ -2,6 +2,7 @@
 (*  xdg-basedir: XDG basedir location for data/cache/configuration files        *)
 (*                                                                              *)
 (*  Copyright (C) 2011, OCamlCore SARL                                          *)
+(*  Copyright (C) 2021, O(1) Labs LLC                                           *)
 (*                                                                              *)
 (*  This library is free software; you can redistribute it and/or modify it     *)
 (*  under the terms of the GNU Lesser General Public License as published by    *)
@@ -32,14 +33,16 @@ type dirnames = dirname list
 
 type t = 
     {
-      data_home:   dirname;
-      data_dirs:   dirnames;
-      config_home: dirname;
-      config_dirs: dirnames;
       cache_home:  dirname;
+      config_dirs: dirnames;
+      config_home: dirname;
+      data_dirs:   dirnames;
+      data_home:   dirname;
+      runtime_dir: dirname option;
+      state_home:  dirname;
     }
 
-let default = 
+let default =
   let getenv ?(default=fun () -> raise Not_found) var =
     try 
       Sys.getenv var 
@@ -71,29 +74,51 @@ let default =
   let mk_var_path env win32 unix = 
     path_of_string (mk_var_gen (fun s -> s) env win32 unix)
   in
-
-    {
-      data_home   = mk_var 
-                      "XDG_DATA_HOME"
-                      (lazy [getenv "AppData"])
-                      (lazy [home; ".local"; "share"]);
-      data_dirs   = mk_var_path
-                      "XDG_DATA_DIRS"
-                      (lazy (getenv "ProgramFiles"))
-                      (lazy "/usr/local/share:/usr/share");
-      config_home = mk_var 
-                      "XDG_CONFIG_HOME"
-                      (lazy [home; "Local Settings"])
-                      (lazy [home; ".config"]);
-      config_dirs = mk_var_path
-                      "XDG_CONFIG_DIRS"
-                      (lazy (getenv "ProgramFiles"))
-                      (lazy "/etc/xdg");
-      cache_home  = mk_var 
-                      "XDG_CACHE_HOME"
-                      (lazy [home; "Local Settings"; "Cache"])
-                      (lazy [home; ".cache"]);
-    }
+  
+  (* Additional checks apply to XDG_RUNTIME_DIR. *)
+  let runtime_dir: dirname option =
+    let check_dir dir_path =
+      (* Checks are only possible on unix systems *)
+      if not Sys.unix then false else
+      (* Directory must exist *)
+      let exists = Sys.file_exists dir_path && Sys.is_directory dir_path in 
+      if not exists then false else
+      let stats = stat dir_path in
+      (* The directory MUST be owned by the user *)
+      Int.equal stats.st_uid (getuid ())
+      (* (the user) MUST be the only one having read and write access to it *)
+      (* Unix access mode MUST be 0700.  *)
+      && Int.equal stats.st_perm 0o0700 
+    in
+    match Sys.getenv_opt "XDG_RUNTIME_DIR" with
+    | Some dir_path when check_dir dir_path -> Some dir_path
+    | _ -> None
+  in
+  { cache_home  = mk_var 
+                    "XDG_CACHE_HOME"
+                    (lazy [home; "Local Settings"; "Cache"])
+                    (lazy [home; ".cache"]);
+    config_dirs = mk_var_path
+                    "XDG_CONFIG_DIRS"
+                    (lazy (getenv "ProgramFiles"))
+                    (lazy "/etc/xdg");
+    config_home = mk_var 
+                    "XDG_CONFIG_HOME"
+                    (lazy [home; "Local Settings"])
+                    (lazy [home; ".config"]);
+    data_dirs   = mk_var_path
+                    "XDG_DATA_DIRS"
+                    (lazy (getenv "ProgramFiles"))
+                    (lazy "/usr/local/share:/usr/share");
+    data_home   = mk_var 
+                    "XDG_DATA_HOME"
+                    (lazy [getenv "AppData"])
+                    (lazy [home; ".local"; "share"]);
+    runtime_dir;          
+    state_home  = mk_var 
+                    "XDG_STATE_HOME"
+                    (lazy [getenv "AppData"])
+                    (lazy [home; ".local"; "state"]); }
 
 let dir_exists ?(exists=false) dn = 
   not exists || (Sys.file_exists dn && Sys.is_directory dn)
@@ -144,14 +169,51 @@ struct
     mk_fun E.data file_exists FilePath.concat 
 end
 
-module Data = Make (struct let data t = t.data_home, t.data_dirs end)
+module Cache = struct
+  let user_dir ?(xdg_env=default) ?exists () = 
+    let dn = xdg_env.cache_home in
+      if dir_exists ?exists dn then
+        dn
+      else
+        raise Not_found
+
+  let user_file ?xdg_env ?exists fn =
+    let fn' = FilePath.concat (user_dir ?exists ?xdg_env ()) fn in
+      if file_exists ?exists fn' then
+        fn'
+      else
+        raise Not_found
+end
 
 module Config = Make (struct let data t = t.config_home, t.config_dirs end)
 
-module Cache =
-struct
+module Data = Make (struct let data t = t.data_home, t.data_dirs end)
+
+module Runtime = struct
   let user_dir ?(xdg_env=default) ?exists () = 
-    let dn = xdg_env.cache_home in
+    match xdg_env.runtime_dir with
+    | Some dir -> Some dir
+    | None when exists = Some true ->
+        raise Not_found
+    | None -> None
+
+  let user_file ?xdg_env ?exists fn =
+    match user_dir ?xdg_env ?exists () with
+    | Some dirname ->
+      let fn' = FilePath.concat dirname fn in
+        if file_exists ?exists fn' then
+          Some fn'
+        else
+          raise Not_found
+    | None when exists = Some true ->
+        raise Not_found
+    | None ->
+        None
+  end
+
+module State = struct
+  let user_dir ?(xdg_env=default) ?exists () = 
+    let dn = xdg_env.state_home in
       if dir_exists ?exists dn then
         dn
       else

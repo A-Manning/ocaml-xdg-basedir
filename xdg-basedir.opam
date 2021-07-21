@@ -2,23 +2,24 @@ opam-version: "2.0"
 
 synopsis: "XDG basedir location for data/cache/configuration files"
 
-version: "0.0.4"
+version: "0.0.5"
 license: "LGPL-2.1 with OCaml linking exception"
 homepage: "https://github.com/gildor478/ocaml-xdg-basedir"
 bug-reports: "https://github.com/gildor478/ocaml-xdg-basedir/issues"
 
 authors: [
   "Sylvain Le Gall"
+  "Ash Manning"
 ]
 maintainer: [
   "Sylvain Le Gall"
 ]
-dev-repo: "https://github.com/gildor478/ocaml-xdg-basedir.git"
+dev-repo: "git://github.com/gildor478/ocaml-xdg-basedir.git"
 
 depends: [
   "ocaml"
   "fileutils"
-  "unix"
+  "base-unix"
 ]
 
 build: [

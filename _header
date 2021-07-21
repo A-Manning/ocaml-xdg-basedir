@@ -1,6 +1,7 @@
 xdg-basedir: XDG basedir location for data/cache/configuration files
 
 Copyright (C) 2011, OCamlCore SARL
+Copyright (C) 2021, O(1) Labs LLC
 
 This library is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by

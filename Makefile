@@ -47,7 +47,7 @@ headache:
 deploy:
 	mkdir dist || true
 	admin-gallu-deploy \
-		--package_name ocaml-xdg-basedir --package_version 0.0.4 \
+		--package_name ocaml-xdg-basedir --package_version 0.0.5 \
 		--verbose
 
 .PHONY: deploy

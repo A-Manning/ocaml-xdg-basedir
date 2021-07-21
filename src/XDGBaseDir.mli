@@ -2,6 +2,7 @@
 (*  xdg-basedir: XDG basedir location for data/cache/configuration files        *)
 (*                                                                              *)
 (*  Copyright (C) 2011, OCamlCore SARL                                          *)
+(*  Copyright (C) 2021, O(1) Labs LLC                                           *)
 (*                                                                              *)
 (*  This library is free software; you can redistribute it and/or modify it     *)
 (*  under the terms of the GNU Lesser General Public License as published by    *)
@@ -40,11 +41,13 @@ type dirnames = dirname list
 (** XDG environment *)
 type t = 
     {
-      data_home :   dirname;  (** $HOME/.local/share *)
-      data_dirs :   dirnames; (** /usr/share *)
-      config_home : dirname;  (** $HOME/.config *)
-      config_dirs : dirnames; (** /etc/xdg *)
-      cache_home :  dirname;  (** $HOME/.cache *)
+      cache_home : dirname;        (** $HOME/.cache *)
+      config_dirs: dirnames;       (** /etc/xdg *)
+      config_home: dirname;        (** $HOME/.config *)
+      data_dirs:   dirnames;       (** /usr/share *)
+      data_home:   dirname;        (** $HOME/.local/share *)
+      runtime_dir: dirname option; (** None *)
+      state_home:  dirname;        (** $HOME/.local/state *)
     }
 
 (** {2 Modules and functions} *)
@@ -57,8 +60,55 @@ val default : t
   *)
 val mkdir_openfile : (filename -> 'a) -> filename -> 'a
 
-module Data :
-  sig
+module Cache : sig
+  (** See {!Data} for explanations about [~xdg_env] and [~exists] *)
+
+  (** Get the user-specific cache directory. *)
+  val user_dir : 
+    ?xdg_env:t -> 
+    ?exists:bool -> unit -> dirname
+
+  (** Get the user-specific filename for a cache file. *) 
+  val user_file :
+    ?xdg_env:t -> 
+    ?exists:bool -> filename -> filename
+end
+
+module Config : sig
+  (** See {!Data} for explanations about [~xdg_env] and [~exists] *)
+
+  (** Get the user-specific configuration directory. *)
+  val user_dir : 
+    ?xdg_env:t -> 
+    ?exists:bool -> unit -> dirname
+
+  (** Get a list of all system-specific configuration directories. *)
+  val system_dirs :
+    ?xdg_env:t -> 
+    ?exists:bool -> unit -> dirname list
+
+  (** Get a list of all configuration directories. *)
+  val all_dirs : 
+    ?xdg_env:t -> 
+    ?exists:bool -> unit -> dirname list
+
+  (** Get the user-specific filename for a configuration file. *) 
+  val user_file :
+    ?xdg_env:t -> 
+    ?exists:bool -> filename -> filename
+
+  (** Get the list of system-specific filenames for a configuration file. *) 
+  val system_files :
+    ?xdg_env:t ->
+    ?exists:bool -> filename -> filename list
+
+  (** Get the list of all filenames for a specific configuration file. *) 
+  val all_files :
+    ?xdg_env:t ->
+    ?exists:bool -> filename -> filename list
+end
+
+module Data : sig
     (** In this module, [~xdg_env] allows to override the default
         XDG environment. If you use [~exists:true], the files/dirs
         are tested for existence.
@@ -93,55 +143,32 @@ module Data :
     val all_files :
       ?xdg_env:t ->
       ?exists:bool -> filename -> filename list
-  end
+end
 
-module Config :
-  sig
-    (** See {!Data} for explanations about [~xdg_env] and [~exists] *)
+module Runtime : sig
+  (** See {!Data} for explanations about [~xdg_env] and [~exists] *)
 
-    (** Get the user-specific configuration directory. *)
-    val user_dir : 
-      ?xdg_env:t -> 
-      ?exists:bool -> unit -> dirname
+  (** Get the user-specific runtime directory *)
+  val user_dir :
+    ?xdg_env:t ->
+    ?exists:bool -> unit -> dirname option
 
-    (** Get a list of all system-specific configuration directories. *)
-    val system_dirs :
-      ?xdg_env:t -> 
-      ?exists:bool -> unit -> dirname list
+  (** Get the user-specific filename for a runtime file. *) 
+  val user_file :
+    ?xdg_env:t -> 
+    ?exists:bool -> filename -> filename option
+end
 
-    (** Get a list of all configuration directories. *)
-    val all_dirs : 
-      ?xdg_env:t -> 
-      ?exists:bool -> unit -> dirname list
+module State : sig
+  (** See {!Data} for explanations about [~xdg_env] and [~exists] *)
 
-    (** Get the user-specific filename for a configuration file. *) 
-    val user_file :
-      ?xdg_env:t -> 
-      ?exists:bool -> filename -> filename
+  (** Get the user-specific state directory. *)
+  val user_dir : 
+    ?xdg_env:t -> 
+    ?exists:bool -> unit -> dirname
 
-    (** Get the list of system-specific filenames for a configuration file. *) 
-    val system_files :
-      ?xdg_env:t ->
-      ?exists:bool -> filename -> filename list
-
-    (** Get the list of all filenames for a specific configuration file. *) 
-    val all_files :
-      ?xdg_env:t ->
-      ?exists:bool -> filename -> filename list
-  end
-
-module Cache :
-  sig
-    (** See {!Data} for explanations about [~xdg_env] and [~exists] *)
-
-    (** Get the user-specific cache directory. *)
-    val user_dir : 
-      ?xdg_env:t -> 
-      ?exists:bool -> unit -> dirname
-
-    (** Get the user-specific filename for a cache file. *) 
-    val user_file :
-      ?xdg_env:t -> 
-      ?exists:bool -> filename -> filename
-  end
-
+  (** Get the user-specific filename for a state file. *) 
+  val user_file :
+    ?xdg_env:t -> 
+    ?exists:bool -> filename -> filename
+end

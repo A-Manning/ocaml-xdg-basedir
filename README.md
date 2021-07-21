@@ -15,6 +15,7 @@ Copyright and license
 ---------------------
 
 (C) 2010 OCamlCore SARL
+(C) 2021 O(1) Labs LLC
 
 ocaml-xdg-basedir is distributed under the terms of the GNU Lesser General
 Public License version 2.1 with OCaml linking exception.
